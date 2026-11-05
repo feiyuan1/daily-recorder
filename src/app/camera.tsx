@@ -4,27 +4,23 @@ import {
   useCameraPermissions,
   useMicrophonePermissions,
 } from "expo-camera";
-import { Directory, File, Paths } from "expo-file-system";
-import {
-  Asset,
-  usePermissions as useMediaLibraryPermissions,
-} from "expo-media-library";
+import { usePermissions as useMediaLibraryPermissions } from "expo-media-library";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Button,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Video } from "react-native-compressor";
 import { CameraRatio, VideoQuality } from "../types";
-import { generateVideoFilename } from "../utils/filename";
 import RecordDuration, { RecordDurationRef } from "./RecordDuration";
+import Video from "./Video";
 
 export default function CameraScreen() {
   const params = useLocalSearchParams<{
@@ -35,6 +31,9 @@ export default function CameraScreen() {
   const title = params.title;
   const ratio = params.ratio as CameraRatio;
   const quality = params.quality as VideoQuality;
+
+  const [videoUri, setVideoUri] = useState<string | undefined>();
+  const [showVideo, setShowVideo] = useState(false);
 
   const cameraRef = useRef<CameraView>(null);
   const [facing, setFacing] = useState<CameraType>("front");
@@ -49,6 +48,34 @@ export default function CameraScreen() {
     });
 
   const recordDurationRef = useRef<RecordDurationRef>(null);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (isRecording) {
+        Alert.alert("Recording in progress", "", [
+          {
+            text: "still back and drop it",
+            onPress: () => {
+              cameraRef.current?.stopRecording();
+              setIsRecording(false);
+              router.back();
+            },
+          },
+          {
+            text: "cancel",
+          },
+        ]);
+      }
+      return isRecording;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress,
+    );
+
+    return () => subscription.remove();
+  }, [isRecording]);
 
   if (!cameraPermission || !microphonePermission || !mediaLibraryPermission) {
     return (
@@ -104,27 +131,6 @@ export default function CameraScreen() {
     setFacing((current) => (current === "back" ? "front" : "back"));
   };
 
-  const compressVideo = async (uri: string) => {
-    try {
-      const compressedUri = await Video.compress(
-        uri,
-        {
-          compressionMethod: "manual",
-          bitrate: 2000000,
-          maxSize: 1280,
-        },
-        (progress) => {
-          console.log(`正在压缩: ${Math.round(progress * 100)}%`);
-        },
-      );
-
-      return compressedUri;
-    } catch (error) {
-      console.error("压缩失败：", error);
-      return uri;
-    }
-  };
-
   const startRecording = async () => {
     if (!cameraRef.current || !recordDurationRef.current) {
       return;
@@ -135,10 +141,7 @@ export default function CameraScreen() {
       const result = await cameraRef.current.recordAsync({
         maxDuration: 300,
       });
-      if (!result?.uri) {
-        throw new Error("No video URI returned");
-      }
-      await saveVideo(await compressVideo(result.uri));
+      setVideoUri(result?.uri);
     } catch (error) {
       Alert.alert(
         "Recording failed",
@@ -146,33 +149,20 @@ export default function CameraScreen() {
       );
     } finally {
       setIsRecording(false);
+      setShowVideo(true);
     }
   };
 
   const stopRecording = () => {
     cameraRef.current?.stopRecording();
     setIsRecording(false);
+    setShowVideo(true);
     recordDurationRef.current?.stopRecordingProgress();
   };
 
-  const saveVideo = async (cacheUri: string) => {
-    const filename = generateVideoFilename(title);
-    const source = new File(cacheUri);
-    const recordingsDir = new Directory(Paths.document, "recordings");
-    if (!recordingsDir.exists) {
-      recordingsDir.create();
-    }
-    const destination = new File(recordingsDir, filename);
-
-    await source.copy(destination);
-
-    const asset = await Asset.create(destination.uri);
-
-    router.replace({
-      pathname: "/success",
-      params: { title, uri: destination.uri, assetId: asset.id },
-    });
-  };
+  if (showVideo) {
+    return <Video uri={videoUri} title={title} />;
+  }
 
   return (
     <View style={styles.container}>
