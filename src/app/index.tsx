@@ -1,9 +1,11 @@
+import * as DocumentPicker from "expo-document-picker";
 import { Paths } from "expo-file-system";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
   Alert,
+  Button,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +14,7 @@ import {
 } from "react-native";
 import { CameraRatio, VideoQuality } from "../types";
 import { isEnoughAvailableSpace } from "../utils";
+import VideoSaver from "./Video";
 
 const RATIOS: CameraRatio[] = ["4:3", "16:9", "1:1"];
 const QUALITIES: VideoQuality[] = ["2160p", "1080p", "720p", "480p"];
@@ -21,6 +24,8 @@ export default function HomeScreen() {
   const [ratio, setRatio] = useState<CameraRatio>("4:3");
   const [quality, setQuality] = useState<VideoQuality>("720p");
   const isDisabledRecord = !title.trim() || !isEnoughAvailableSpace();
+  const [uri, setUri] = useState<string>();
+  const [timestamp, setTimestamp] = useState<number>();
 
   const handleStart = () => {
     const trimmed = title.trim();
@@ -33,6 +38,33 @@ export default function HomeScreen() {
       params: { title: trimmed, ratio, quality },
     });
   };
+
+  const pickFile = async () => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      Alert.alert("Please enter a title");
+      return;
+    }
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "video/*",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled === false) {
+        const file = result.assets[0];
+        console.log("文件time:", file.lastModified);
+        setUri(file.uri);
+        setTimestamp(file.lastModified);
+      }
+    } catch (err) {
+      console.error("选择文件失败", err);
+    }
+  };
+
+  if (uri) {
+    return <VideoSaver uri={uri} title={title} timestamp={timestamp} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -105,6 +137,8 @@ export default function HomeScreen() {
       >
         <Text style={styles.buttonText}>Start Recording</Text>
       </TouchableOpacity>
+
+      <Button title="pickFile" onPress={pickFile} />
     </View>
   );
 }

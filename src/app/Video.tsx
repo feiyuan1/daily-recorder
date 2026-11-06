@@ -12,7 +12,15 @@ enum CompressStatus {
   SUCCESS = "SUCCESS",
   FAILED = "FAILED",
 }
-const VideoSaver = ({ uri, title }: { uri?: string; title: string }) => {
+const VideoSaver = ({
+  uri,
+  title,
+  timestamp,
+}: {
+  uri?: string;
+  title: string;
+  timestamp?: number;
+}) => {
   const handleRecordAnother = () => {
     router.replace("/");
   };
@@ -39,8 +47,8 @@ const VideoSaver = ({ uri, title }: { uri?: string; title: string }) => {
         uri,
         {
           compressionMethod: "manual",
-          bitrate: 2000000,
-          maxSize: 1280,
+          bitrate: 1000000,
+          maxSize: 960,
         },
         (progress) => {
           setProgressing(progress);
@@ -70,7 +78,7 @@ const VideoSaver = ({ uri, title }: { uri?: string; title: string }) => {
   }
 
   const handleSaveVideo = async () => {
-    const filename = generateVideoFilename(title);
+    const filename = generateVideoFilename({ title, timestamp });
     const source = new File(compressUri.current!);
     const recordingsDir = new Directory(Paths.document, "recordings");
     if (!recordingsDir.exists) {
