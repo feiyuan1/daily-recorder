@@ -4,7 +4,7 @@ export function generateVideoFilename(
 ): string {
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const time = now.toTimeString().slice(0, 6).replace(/:/g, "_");
+  const time = now.toTimeString().slice(0, 5).replace(/:/g, "_");
   const sanitized = title
     .trim()
     .replace(/[\\/:*?"<>|]/g, "_")

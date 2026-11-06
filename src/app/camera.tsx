@@ -138,9 +138,7 @@ export default function CameraScreen() {
     recordDurationRef.current.startRecordingProgress();
     setIsRecording(true);
     try {
-      const result = await cameraRef.current.recordAsync({
-        maxDuration: 300,
-      });
+      const result = await cameraRef.current.recordAsync();
       setVideoUri(result?.uri);
     } catch (error) {
       Alert.alert(
