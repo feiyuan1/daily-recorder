@@ -89,6 +89,10 @@ const VideoSaver = ({
     await source.copy(destination);
 
     const asset = await Asset.create(destination.uri);
+    new File(`file://${uri}`).delete();
+    if (compressUri.current && compressUri.current !== uri) {
+      new File(compressUri.current).delete();
+    }
 
     router.replace({
       pathname: "/success",
