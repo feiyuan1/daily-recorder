@@ -5,7 +5,6 @@ import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
   Alert,
-  Button,
   StyleSheet,
   Text,
   TextInput,
@@ -21,8 +20,6 @@ const QUALITIES: VideoQuality[] = ["2160p", "1080p", "720p", "480p"];
 
 export default function HomeScreen() {
   const [title, setTitle] = useState("");
-  const [ratio, setRatio] = useState<CameraRatio>("4:3");
-  const [quality, setQuality] = useState<VideoQuality>("720p");
   const isDisabledRecord = !title.trim() || !isEnoughAvailableSpace();
   const [uri, setUri] = useState<string>();
   const [timestamp, setTimestamp] = useState<number>();
@@ -35,7 +32,7 @@ export default function HomeScreen() {
     }
     router.push({
       pathname: "/camera",
-      params: { title: trimmed, ratio, quality },
+      params: { title: trimmed },
     });
   };
 
@@ -86,50 +83,6 @@ export default function HomeScreen() {
         />
       </View>
 
-      <View style={styles.field}>
-        <Text style={styles.label}>Aspect Ratio</Text>
-        <View style={styles.options}>
-          {RATIOS.map((r) => (
-            <TouchableOpacity
-              key={r}
-              style={[styles.option, ratio === r && styles.optionActive]}
-              onPress={() => setRatio(r)}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  ratio === r && styles.optionTextActive,
-                ]}
-              >
-                {r}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.label}>Video Quality</Text>
-        <View style={styles.options}>
-          {QUALITIES.map((q) => (
-            <TouchableOpacity
-              key={q}
-              style={[styles.option, quality === q && styles.optionActive]}
-              onPress={() => setQuality(q)}
-            >
-              <Text
-                style={[
-                  styles.optionText,
-                  quality === q && styles.optionTextActive,
-                ]}
-              >
-                {q}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
       <TouchableOpacity
         style={[styles.button, isDisabledRecord && styles.buttonDisabled]}
         onPress={handleStart}
@@ -138,7 +91,13 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>Start Recording</Text>
       </TouchableOpacity>
 
-      <Button title="pickFile" onPress={pickFile} />
+      <TouchableOpacity
+        style={[styles.button, !title.trim() && styles.buttonDisabled]}
+        onPress={pickFile}
+        disabled={!title.trim()}
+      >
+        <Text style={styles.buttonText}>pickFile</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -175,30 +134,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-  },
-  options: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  option: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  optionActive: {
-    backgroundColor: "#0a7ea4",
-    borderColor: "#0a7ea4",
-  },
-  optionText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  optionTextActive: {
-    color: "#fff",
-    fontWeight: "600",
   },
   button: {
     backgroundColor: "#0a7ea4",
