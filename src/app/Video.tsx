@@ -43,12 +43,13 @@ const VideoSaver = ({
   const comPressVideo = async () => {
     setCompressStatus(CompressStatus.PROGRESSING);
     try {
+      await Video.activateBackgroundTask();
       compressUri.current = await Video.compress(
         uri,
         {
           compressionMethod: "manual",
-          bitrate: 1000000,
-          maxSize: 960,
+          bitrate: 500000,
+          maxSize: 720,
         },
         (progress) => {
           setProgressing(progress);
@@ -59,6 +60,8 @@ const VideoSaver = ({
       console.error("压缩失败：", error);
       setCompressStatus(CompressStatus.FAILED);
       compressUri.current = uri;
+    } finally {
+      await Video.deactivateBackgroundTask();
     }
   };
 
