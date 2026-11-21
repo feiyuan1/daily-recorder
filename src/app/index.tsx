@@ -48,7 +48,7 @@ export default function HomeScreen() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "video/*",
-        copyToCacheDirectory: true,
+        copyToCacheDirectory: false,
       });
 
       if (result.canceled === false) {
