@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
@@ -17,17 +18,14 @@ import {
   useVideoOutput,
 } from "react-native-vision-camera";
 import RecordDuration, { RecordDurationRef } from "./RecordDuration";
-import Video from "./Video";
+import { runTasks } from "./task";
+import useTaskStore from "./task/useTaskStore";
 
 const CameraInner = () => {
   const params = useLocalSearchParams<{
     title: string;
   }>();
   const title = params.title;
-
-  const [videoUri, setVideoUri] = useState<string | undefined>();
-  const [showVideo, setShowVideo] = useState(false);
-
   const [facing, setFacing] = useState<TargetCameraPosition>("front");
   const [isRecording, setIsRecording] = useState(false);
   const videoOutput = useVideoOutput({
@@ -37,6 +35,8 @@ const CameraInner = () => {
   const recorderRef = useRef<Recorder>(null);
 
   const recordDurationRef = useRef<RecordDurationRef>(null);
+
+  const createTask = useTaskStore((state) => state.createTask);
 
   useEffect(() => {
     videoOutput.setOutputSettings({ codec: "h265" });
@@ -82,13 +82,21 @@ const CameraInner = () => {
   };
 
   const onRecordingFinished = (filePath: string) => {
-    setVideoUri(filePath);
+    const formattedPath = "file://" + filePath;
+    const file = new File(formattedPath);
+    createTask({
+      title,
+      originalUri: formattedPath,
+      timestamp: Date.now(),
+      size: file.size,
+    });
+    runTasks();
+    router.replace("/tasklist");
   };
 
   const onRecordingError = (error: Error) => {
     Alert.alert("Recording failed", error.message);
     setIsRecording(false);
-    setShowVideo(true);
   };
 
   const startRecording = async () => {
@@ -106,13 +114,8 @@ const CameraInner = () => {
   const stopRecording = () => {
     recorderRef.current?.stopRecording();
     setIsRecording(false);
-    setShowVideo(true);
     recordDurationRef.current?.stopRecordingProgress();
   };
-
-  if (showVideo) {
-    return <Video uri={videoUri} title={title} />;
-  }
 
   return (
     <View style={styles.container}>

@@ -2,27 +2,30 @@ import * as DocumentPicker from "expo-document-picker";
 import { Paths } from "expo-file-system";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { CameraRatio, VideoQuality } from "../types";
-import { isEnoughAvailableSpace } from "../utils";
-import VideoSaver from "./Video";
-
-const RATIOS: CameraRatio[] = ["4:3", "16:9", "1:1"];
-const QUALITIES: VideoQuality[] = ["2160p", "1080p", "720p", "480p"];
+import { formatBytes, isEnoughAvailableSpace } from "../utils";
+import { runTasks } from "./task";
+import useTaskStore from "./task/useTaskStore";
 
 export default function HomeScreen() {
   const [title, setTitle] = useState("");
   const isDisabledRecord = !title.trim() || !isEnoughAvailableSpace();
-  const [uri, setUri] = useState<string>();
-  const [timestamp, setTimestamp] = useState<number>();
+  const createTask = useTaskStore((state) => state.createTask);
+
+  useEffect(() => {
+    if (!isEnoughAvailableSpace()) {
+      Alert.alert("not enough space");
+    }
+  }, []);
 
   const handleStart = () => {
     const trimmed = title.trim();
@@ -50,26 +53,36 @@ export default function HomeScreen() {
 
       if (result.canceled === false) {
         const file = result.assets[0];
-        console.log("文件time:", file.lastModified);
-        setUri(file.uri);
-        setTimestamp(file.lastModified);
+        createTask({
+          title: trimmed,
+          originalUri: file.uri,
+          timestamp: file.lastModified,
+          size: file.size,
+        });
+        runTasks();
+        router.push("/tasklist");
       }
     } catch (err) {
       console.error("选择文件失败", err);
     }
   };
 
-  if (uri) {
-    return <VideoSaver uri={uri} title={title} timestamp={timestamp} />;
-  }
-
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       <Text style={styles.heading}>Daily Recorder</Text>
       <Text style={styles.description}>
-        Available space: {Paths.availableDiskSpace / 1024 / 1000}M
+        Available space: {formatBytes(Paths.availableDiskSpace)}
       </Text>
+      <TouchableOpacity
+        style={styles.taskListButton}
+        onPress={() => router.push("/tasklist")}
+      >
+        <Image
+          source={require("./icon/transport.png")}
+          style={styles.transport}
+        />
+      </TouchableOpacity>
 
       <View style={styles.field}>
         <Text style={styles.label}>Title</Text>
@@ -149,5 +162,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 17,
     fontWeight: "600",
+  },
+  taskListButton: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    height: 30,
+    width: 30,
+  },
+  transport: {
+    height: "100%",
+    width: "100%",
   },
 });
