@@ -1,4 +1,5 @@
 import { create, StoreApi, UseBoundStore } from "zustand";
+import { getErrorMessage, LogType, writeLog } from "../../log";
 import { getTaskStorage, writeTaskStorage } from "./TaskStorage";
 
 export enum TaskStatus {
@@ -16,6 +17,7 @@ export interface Task {
   timestamp: number;
   size?: number;
   id: number;
+  cancelId?: string;
   status: TaskStatus;
   compressedUri?: string;
 }
@@ -46,6 +48,7 @@ const getInitTasks = () => {
     return tasks.split("\n").map((task) => JSON.parse(task) as Task);
   } catch (error) {
     console.error("error init tasks", (error as Error)?.message || error);
+    writeLog("error init tasks" + getErrorMessage(error), LogType.Error);
     return [];
   }
 };
@@ -76,16 +79,23 @@ const createTaskStore = () => {
         }),
       deleteTask: (id: number) => {
         set((state) => {
-          const newTasks = state.tasks.filter((task) => task.id !== id);
+          if (state.tasks[0]?.id !== id) {
+            return { tasks: state.tasks };
+          }
+          const newTasks = state.tasks.slice(1);
           writeTaskStorage(newTasks.map((task) => JSON.stringify(task)));
           return { tasks: newTasks };
         });
       },
       updateTask: (id, updatedTask) =>
         set((state) => {
-          const newTasks = state.tasks.map((task) =>
-            task.id === id ? { ...task, ...updatedTask } : task,
-          );
+          if (state.tasks[0]?.id !== id) {
+            return { tasks: state.tasks };
+          }
+          const newTasks = [
+            { ...state.tasks[0], ...updatedTask },
+            ...state.tasks.slice(1),
+          ];
           writeTaskStorage(newTasks.map((task) => JSON.stringify(task)));
           return {
             tasks: newTasks,

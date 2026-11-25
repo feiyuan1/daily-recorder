@@ -1,4 +1,5 @@
 import {
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -8,9 +9,13 @@ import {
 } from "react-native";
 import useTaskStore, { Task, TaskStatus } from "./task/useTaskStore";
 
+import { Directory, File, Paths } from "expo-file-system";
 import { useCallback, useEffect } from "react";
+import { Video } from "react-native-compressor";
 import { formatBytes } from "../utils";
+import { RECORDING_DIR_NAME } from "./constants";
 import { runTasks } from "./task";
+import { TaskStoragePath } from "./task/TaskStorage";
 
 export default function TaskListScreen() {
   const tasks = useTaskStore((state) => state.tasks);
@@ -49,11 +54,46 @@ const statusLabels: Record<TaskStatus, string> = {
   [TaskStatus.Failed]: "Failed",
 };
 
+const onClean = () => {
+  Alert.alert(
+    "Are you sure you want to clean cache data?",
+    "This will delete all cache data",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "OK",
+        onPress: () => {
+          const taskState = useTaskStore.getState();
+          const recordingsDir = new Directory(RECORDING_DIR_NAME);
+          if (recordingsDir.exists) {
+            recordingsDir.delete();
+          }
+          const cacheDir = new Directory(Paths.cache);
+          cacheDir.delete();
+          const taskStorageFile = new File(TaskStoragePath);
+          taskStorageFile.delete();
+          const task = taskState.tasks[0];
+          if (task.status === TaskStatus.Compressing && task.cancelId) {
+            Video.cancelCompression(task.cancelId!);
+          }
+          taskState.initStore([]);
+        },
+      },
+    ],
+  );
+};
+
 function TaskList({ tasks, isRefreshing, onRefresh }: TaskListProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Tasks ({tasks.length})</Text>
+        <TouchableOpacity style={[styles.cleanButton]} onPress={onClean}>
+          <Text>clean cache data</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.refreshButton,
@@ -132,6 +172,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "700",
+  },
+  cleanButton: {
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#f0f0f0",
   },
   refreshButton: {
     borderRadius: 10,

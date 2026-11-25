@@ -31,6 +31,10 @@
     "plugins": [
       "expo-router",
       [
+        "react-native-continued-task",
+        { "androidForegroundServiceTypes": ["dataSync"] }
+      ],
+      [
         "expo-media-library",
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to save recorded videos to your media library.",

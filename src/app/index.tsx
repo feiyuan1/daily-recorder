@@ -1,10 +1,13 @@
 import * as DocumentPicker from "expo-document-picker";
 import { Paths } from "expo-file-system";
+import { usePermissions as useMediaLibraryPermissions } from "expo-media-library";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
+  Button,
   Image,
   StyleSheet,
   Text,
@@ -12,11 +15,99 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  useCameraPermission,
+  useMicrophonePermission,
+} from "react-native-vision-camera";
+import { getDirPermission, requestDirPermission } from "../log/logPermission";
 import { formatBytes, isEnoughAvailableSpace } from "../utils";
 import { runTasks } from "./task";
 import useTaskStore from "./task/useTaskStore";
 
 export default function HomeScreen() {
+  const {
+    hasPermission: cameraPermission,
+    requestPermission: requestCameraPermission,
+  } = useCameraPermission();
+  const {
+    hasPermission: microphonePermission,
+    requestPermission: requestMicrophonePermission,
+  } = useMicrophonePermission();
+  const [mediaLibraryPermission, requestMediaLibraryPermission] =
+    useMediaLibraryPermissions({
+      writeOnly: true,
+    });
+
+  useEffect(() => {
+    if (getDirPermission()) {
+      return;
+    }
+    Alert.alert(
+      "Please grant permission to access the directory to save logs",
+      "for debug",
+      [
+        {
+          text: "OK",
+          onPress: requestDirPermission,
+        },
+      ],
+    );
+  }, []);
+
+  if (!mediaLibraryPermission) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (!cameraPermission) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.message}>
+          Camera permission is required to record video.
+        </Text>
+        <Button
+          onPress={requestCameraPermission}
+          title="Grant camera permission"
+        />
+      </View>
+    );
+  }
+
+  if (!microphonePermission) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.message}>
+          Microphone permission is required to record audio.
+        </Text>
+        <Button
+          onPress={requestMicrophonePermission}
+          title="Grant microphone permission"
+        />
+      </View>
+    );
+  }
+
+  if (!mediaLibraryPermission.granted) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.message}>
+          Media library permission is required to save videos.
+        </Text>
+        <Button
+          onPress={requestMediaLibraryPermission}
+          title="Grant media library permission"
+        />
+      </View>
+    );
+  }
+
+  return <HomeInner />;
+}
+
+function HomeInner() {
   const [title, setTitle] = useState("");
   const isDisabledRecord = !title.trim() || !isEnoughAvailableSpace();
   const createTask = useTaskStore((state) => state.createTask);
@@ -116,6 +207,18 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  message: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
+  },
   container: {
     flex: 1,
     backgroundColor: "#fff",
