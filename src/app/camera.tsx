@@ -1,4 +1,5 @@
 import { File } from "expo-file-system";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
@@ -56,8 +57,7 @@ const CameraInner = () => {
           {
             text: "still back and drop it",
             onPress: () => {
-              recorderRef.current!.stopRecording();
-              setIsRecording(false);
+              cancelRecording();
               router.back();
             },
           },
@@ -96,7 +96,7 @@ const CameraInner = () => {
 
   const onRecordingError = (error: Error) => {
     Alert.alert("Recording failed", error.message);
-    setIsRecording(false);
+    cancelRecording();
   };
 
   const startRecording = async () => {
@@ -109,12 +109,21 @@ const CameraInner = () => {
       onRecordingFinished,
       onRecordingError,
     );
+    activateKeepAwakeAsync();
   };
 
   const stopRecording = () => {
     recorderRef.current?.stopRecording();
     setIsRecording(false);
     recordDurationRef.current?.stopRecordingProgress();
+    deactivateKeepAwake();
+  };
+
+  const cancelRecording = () => {
+    recorderRef.current?.cancelRecording();
+    setIsRecording(false);
+    recordDurationRef.current?.stopRecordingProgress();
+    deactivateKeepAwake();
   };
 
   return (
